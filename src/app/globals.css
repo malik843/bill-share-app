@@ -15,7 +15,6 @@
   --muted-foreground: #64748b;
   --border: #e2e8f0;
 }
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #020617;
@@ -56,4 +55,145 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  /* Dashboard Page Layout */
+  .dashboard-wrapper {
+    @apply min-h-screen w-full bg-muted/30 text-foreground flex flex-col;
+  }
+
+  .dashboard-container {
+    @apply w-full flex-1 flex flex-col p-4 sm:p-6 lg:p-10 transition-opacity duration-700 ease-out;
+  }
+
+  .dashboard-header {
+    @apply flex justify-between items-center w-full mb-8 bg-card p-6 md:p-8 rounded-[2rem] shadow-sm border border-border;
+  }
+
+  .dashboard-header-title {
+    @apply text-muted-foreground text-sm font-semibold uppercase tracking-widest mb-1;
+  }
+
+  .dashboard-header-balance {
+    @apply text-4xl md:text-5xl font-bold tracking-tight;
+  }
+
+  .dashboard-header-actions {
+    @apply flex space-x-3 md:space-x-6 items-center;
+  }
+
+  .dashboard-action-btn {
+    @apply p-3 md:p-4 bg-muted hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm;
+  }
+
+  .dashboard-content-box {
+    @apply flex-1 w-full bg-card rounded-[2rem] p-6 md:p-8 shadow-sm border border-border flex flex-col;
+  }
+
+  /* Debt Table Components */
+  .dash-table-wrapper {
+    @apply w-full flex-1 flex flex-col;
+  }
+
+  .dash-table-controls {
+    @apply flex justify-end items-center mb-6 space-x-6 text-muted-foreground selection:bg-transparent;
+  }
+
+  .dash-table-filter-btn {
+    @apply hover:text-foreground transition-colors p-1;
+  }
+
+  .dash-table-pagination {
+    @apply flex items-center space-x-4 text-sm font-medium;
+  }
+
+  .dash-table-pagination-btn {
+    @apply hover:text-foreground transition-colors border border-border hover:bg-muted rounded-md p-1 items-center justify-center flex;
+  }
+
+  .dash-table-scroll-container {
+    @apply flex flex-col space-y-3 w-full overflow-x-auto pb-4;
+  }
+
+  .dash-table-inner {
+    @apply min-w-[700px] flex flex-col space-y-3;
+  }
+
+  .dash-table-row {
+    @apply flex items-center w-full p-4 md:px-6 md:py-5 bg-card/60 hover:bg-muted/60 transition-colors rounded-[2rem] border border-border shadow-sm;
+  }
+
+  .dash-cell-user {
+    @apply flex items-center space-x-4 w-2/12;
+  }
+
+  .dash-cell-user-name {
+    @apply font-semibold text-foreground truncate;
+  }
+
+  .dash-cell-purpose {
+    @apply w-3/12 text-sm text-foreground/80 font-medium truncate px-4 text-center;
+  }
+
+  .dash-cell-amount {
+    @apply w-2/12 text-sm font-bold text-foreground truncate px-4 text-center;
+  }
+
+  .dash-cell-nudge {
+    @apply w-2/12 flex justify-center px-4;
+  }
+
+  .nudge-btn {
+    @apply text-slate-400 hover:text-accent transition-transform hover:scale-110 active:scale-95;
+  }
+
+  .dash-cell-status {
+    @apply w-2/12 text-sm font-medium flex items-center justify-center px-4;
+  }
+
+  .status-badge {
+    @apply px-4 py-1.5 rounded-full text-xs tracking-wider uppercase font-bold w-full text-center;
+  }
+
+  .status-badge-paid {
+    @apply bg-accent/15 text-accent;
+  }
+
+  .status-badge-pending {
+    @apply bg-destructive/15 text-destructive;
+  }
+
+  .dash-cell-options {
+    @apply w-1/12 flex justify-end;
+  }
+
+  .options-btn {
+    @apply text-slate-400 hover:text-foreground transition-colors p-2 rounded-full hover:bg-background;
+  }
+
+  /* Skeleton Loader */
+  .skeleton-wrapper {
+    @apply w-full max-w-7xl mx-auto flex-1 flex flex-col p-4 sm:p-6 lg:p-10 space-y-8 min-h-screen;
+  }
+
+  .skeleton-header {
+    @apply w-full bg-card rounded-[2rem] shadow-sm border border-border flex justify-between items-center p-6 md:p-8;
+  }
+
+  .skeleton-box {
+    @apply bg-muted rounded-md;
+  }
+
+  .skeleton-avatar {
+    @apply rounded-full bg-muted;
+  }
+
+  .skeleton-table {
+    @apply w-full flex-1 bg-card rounded-[2rem] shadow-sm border border-border p-6 md:p-8 flex flex-col;
+  }
+
+  .skeleton-table-row {
+    @apply w-full h-[72px] bg-muted/60 rounded-2xl;
+  }
 }
