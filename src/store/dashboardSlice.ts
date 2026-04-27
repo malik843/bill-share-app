@@ -8,13 +8,28 @@ export interface BillDetails {
   status: string;
 }
 
+export interface UserProfile {
+  displayName: string;
+  avatarId: string;
+  phoneNumber: string | null;
+  currency: "NGN" | "USD" | "EUR" | "GBP" | "CAD" | "GHS";
+  paymentMethod: "bank_transfer" | "mobile_money" | "card" | "paypal" | "in_app_wallet" | null;
+  firstGroup: {
+    name: string;
+    icon: string;
+    members: string[];
+  };
+}
+
 interface DashboardState {
   bills: BillDetails[];
   walletBalance: number;
+  user: UserProfile | null;
 }
 
 const initialState: DashboardState = {
   walletBalance: 15000,
+  user: null,
   bills: [
     { id: '1', name: 'Chinedu O.', purpose: 'Dinner at RSV', amount: 15000, status: 'Pending' },
     { id: '2', name: 'Aisha M.', purpose: 'Uber ride', amount: -5000, status: 'Paid' },
@@ -39,9 +54,12 @@ const dashboardSlice = createSlice({
       if (bill) {
         bill.status = action.payload.status;
       }
+    },
+    setUserProfile: (state, action: PayloadAction<UserProfile>) => {
+      state.user = action.payload;
     }
   },
 });
 
-export const { addBill, deposit, updateBillStatus } = dashboardSlice.actions;
+export const { addBill, deposit, updateBillStatus, setUserProfile } = dashboardSlice.actions;
 export default dashboardSlice.reducer;
