@@ -126,7 +126,24 @@ export default function OnboardingForm({ initialName = '', onSubmit }: Props) {
     }
 
     if (step === 4) {
-      // Final dispatch + advance
+      // Create group via API if user filled out group data
+      const hasGroup = data.firstGroup.name.trim().length > 0;
+      if (hasGroup) {
+        try {
+          await fetch('/api/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: data.firstGroup.name,
+              icon: data.firstGroup.icon,
+              currency: data.currency,
+            }),
+          });
+        } catch (e) {
+          console.error('Failed to create group:', e);
+        }
+      }
+      // Persist to local Redux for immediate UI use
       dispatch(setUserProfile(data as unknown as UserProfile));
       onSubmit();
       return;
@@ -455,7 +472,7 @@ export default function OnboardingForm({ initialName = '', onSubmit }: Props) {
                 <button
                   type="button"
                   onClick={() => { 
-                    setData({ ...data, firstGroup: { name: '', icon: GROUP_ICONS[0], members: [] } }); 
+                    // Skip group creation — just save profile and advance
                     dispatch(setUserProfile({...data, firstGroup: { name: '', icon: GROUP_ICONS[0], members: [] }} as unknown as UserProfile));
                     onSubmit();
                   }}
