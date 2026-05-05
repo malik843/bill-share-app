@@ -19,6 +19,8 @@ export const metadata: Metadata = {
 
 import StoreProvider from "@/components/providers/StoreProvider";
 import { SessionProvider } from "next-auth/react";
+import PageTransition from "@/components/PageTransition";
+import { ToastProvider } from "@/components/providers/ToastProvider";
 
 export default function RootLayout({
   children,
@@ -32,7 +34,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <SessionProvider>
-          <StoreProvider>{children}</StoreProvider>
+          <StoreProvider>
+            <ToastProvider>
+              <PageTransition>{children}</PageTransition>
+            </ToastProvider>
+          </StoreProvider>
         </SessionProvider>
       </body>
     </html>

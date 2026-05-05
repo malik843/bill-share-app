@@ -9,22 +9,20 @@ datasource db {
 }
 
 // ─── NextAuth Required Models ───────────────────────────────────────────────
-
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -34,8 +32,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -47,36 +44,35 @@ model VerificationToken {
 }
 
 // ─── Application Models ─────────────────────────────────────────────────────
-
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified DateTime?
-  name          String?
-  image         String?
-  avatar        String?
-  password      String? // For future Credentials provider
-  hasOnboarded  Boolean   @default(false)
-  createdAt     DateTime  @default(now())
+  id                String          @id @default(cuid())
+  email             String          @unique
+  emailVerified     DateTime?
+  name              String?
+  image             String?
+  avatar            String?
+  password          String?         // For future Credentials provider
+  hasOnboarded      Boolean         @default(false)
+  createdAt         DateTime        @default(now())
 
   // NextAuth relations
-  accounts Account[]
-  sessions Session[]
+  accounts          Account[]
+  sessions          Session[]
 
   // App relations
-  groupMembers  GroupMember[]
-  expensesPaid  Expense[]      @relation("Payer")
-  expenseSplits ExpenseSplit[]
-  settlementsFrom Settlement[] @relation("Debtor")
-  settlementsTo   Settlement[] @relation("Creditor")
+  groupMembers      GroupMember[]
+  expensesPaid      Expense[]       @relation("Payer")
+  expenseSplits     ExpenseSplit[]
+  settlementsFrom   Settlement[]    @relation("Debtor")
+  settlementsTo     Settlement[]    @relation("Creditor")
 }
 
 model Group {
-  id        String   @id @default(cuid())
-  name      String
-  icon      String?
-  currency  String   @default("NGN")
-  createdAt DateTime @default(now())
+  id          String       @id @default(cuid())
+  name        String
+  icon        String?
+  currency    String       @default("NGN")
+  createdAt   DateTime     @default(now())
 
   members     GroupMember[]
   expenses    Expense[]
@@ -84,62 +80,64 @@ model Group {
 }
 
 model GroupMember {
-  id       String   @id @default(cuid())
-  userId   String
-  groupId  String
-  role     Role     @default(MEMBER)
-  joinedAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  role      Role     @default(MEMBER)
+  joinedAt  DateTime @default(now())
 
-  user  User  @relation(fields: [userId], references: [id])
-  group Group @relation(fields: [groupId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
 
   @@unique([userId, groupId])
 }
 
 model Expense {
-  id          String      @id @default(cuid())
+  id          String        @id @default(cuid())
   groupId     String
   payerId     String
   title       String
-  amount      Float // stored in major currency unit (naira, not kobo)
-  splitMethod SplitMethod @default(EQUAL)
-  createdAt   DateTime    @default(now())
+  amount      Float         // in major unit (e.g. Naira)
+  splitMethod SplitMethod   @default(EQUAL)
+  createdAt   DateTime      @default(now())
 
-  group  Group          @relation(fields: [groupId], references: [id])
-  payer  User           @relation("Payer", fields: [payerId], references: [id])
-  splits ExpenseSplit[]
+  group       Group         @relation(fields: [groupId], references: [id])
+  payer       User          @relation("Payer", fields: [payerId], references: [id])
+  splits      ExpenseSplit[]
 }
 
 model ExpenseSplit {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   expenseId String
   userId    String
-  amount    Float // the exact amount this user owes for this expense
+  amount    Float   // exact amount this user owes for this expense
 
-  expense Expense @relation(fields: [expenseId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+  expense   Expense @relation(fields: [expenseId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
 
   @@unique([expenseId, userId])
 }
 
+// ─── Settlement Model (Improved) ─────────────────────────────────────────────
 model Settlement {
-  id                String           @id @default(cuid())
-  groupId           String
-  debtorId          String
-  creditorId        String
-  amount            Float
-  status            SettlementStatus @default(PENDING)
+  id               String            @id @default(cuid())
+  groupId          String
+  debtorId         String
+  creditorId       String
+  amount           Float
+  title            String?           // ← Added: Purpose / Main reason
+  note             String?           // ← Added: Optional extra note
+  status           SettlementStatus  @default(PENDING)
   paystackReference String?
-  settledAt         DateTime?
-  createdAt         DateTime         @default(now())
+  settledAt        DateTime?
+  createdAt        DateTime          @default(now())
 
-  group    Group @relation(fields: [groupId], references: [id])
-  debtor   User  @relation("Debtor", fields: [debtorId], references: [id])
-  creditor User  @relation("Creditor", fields: [creditorId], references: [id])
+  group            Group             @relation(fields: [groupId], references: [id])
+  debtor           User              @relation("Debtor", fields: [debtorId], references: [id])
+  creditor         User              @relation("Creditor", fields: [creditorId], references: [id])
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
-
 enum Role {
   ADMIN
   MEMBER

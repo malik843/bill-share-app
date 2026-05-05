@@ -78,3 +78,38 @@ export async function POST(
 
   return NextResponse.json(member, { status: 201 })
 }
+
+// GET /api/groups/[groupId]/members — Get all members of a group
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ groupId: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { groupId } = await params
+
+  // Verify caller is a member
+  const callerMembership = await prisma.groupMember.findUnique({
+    where: {
+      userId_groupId: {
+        userId: session.user.id,
+        groupId,
+      },
+    },
+  })
+  if (!callerMembership) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const members = await prisma.groupMember.findMany({
+    where: { groupId },
+    include: {
+      user: { select: { id: true, name: true, image: true, email: true } },
+    },
+  })
+
+  return NextResponse.json(members)
+}

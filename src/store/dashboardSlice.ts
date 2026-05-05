@@ -30,13 +30,7 @@ interface DashboardState {
 const initialState: DashboardState = {
   walletBalance: 15000,
   user: null,
-  bills: [
-    { id: '1', name: 'Chinedu O.', purpose: 'Dinner at RSV', amount: 15000, status: 'Pending' },
-    { id: '2', name: 'Aisha M.', purpose: 'Uber ride', amount: -5000, status: 'Paid' },
-    { id: '3', name: 'Seun A.', purpose: 'Concert Tickets', amount: -10000, status: 'Pending' },
-    { id: '4', name: 'Kemi L.', purpose: 'Groceries', amount: 3500, status: 'Pending' },
-    { id: '5', name: 'Tobi F.', purpose: 'Weekend Trip', amount: 25000, status: 'Pending' },
-  ],
+  bills: [],
 };
 
 const dashboardSlice = createSlice({

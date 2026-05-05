@@ -24,6 +24,17 @@ export async function POST(req: NextRequest) {
 
   const { name, icon, currency } = parsed.data
 
+  // Enforce Free-tier 3-group limit (server-side)
+  const existingCount = await prisma.groupMember.count({
+    where: { userId: session.user.id },
+  })
+  if (existingCount >= 3) {
+    return NextResponse.json(
+      { error: 'Free plan limit reached. You can only be in up to 3 groups.', code: 'GROUP_LIMIT' },
+      { status: 403 }
+    )
+  }
+
   const group = await prisma.group.create({
     data: {
       name,

@@ -196,4 +196,50 @@ body {
   .skeleton-table-row {
     @apply w-full h-[72px] bg-muted/60 rounded-2xl;
   }
+
+  /* ── Phase 2: Expense Card ── */
+  .expense-card {
+    @apply rounded-xl border border-border p-4 bg-card/60 hover:bg-muted/40
+           transition-all duration-200 hover:shadow-sm;
+  }
+
+  .expense-split-pill {
+    @apply text-xs px-3 py-1 rounded-full bg-primary/10 text-primary font-medium;
+  }
+
+  /* ── Phase 2: Balance Summary ── */
+  .balance-card {
+    @apply rounded-2xl p-5 border border-border bg-card shadow-sm;
+  }
+
+  .balance-card-owed {
+    @apply border-l-4 border-l-emerald-500/40;
+  }
+
+  .balance-card-owing {
+    @apply border-l-4 border-l-amber-500/40;
+  }
+
+  /* ── Phase 2: Settlement Celebration ── */
+  .celebration-overlay {
+    @apply fixed inset-0 z-[100] flex items-center justify-center p-4
+           bg-black/70 backdrop-blur-md;
+  }
+
+  .celebration-card {
+    @apply relative flex flex-col items-center py-12 px-8
+           rounded-3xl border border-border bg-card
+           shadow-2xl overflow-hidden w-full max-w-md;
+  }
+
+  .settle-celebrate-btn {
+    @apply px-8 py-3 rounded-full border border-border text-sm font-semibold
+           hover:bg-muted transition-all cursor-pointer
+           hover:scale-105 active:scale-95;
+  }
+
+  /* ── Phase 2: Dashboard Content Inner ── */
+  .dashboard-content-inner {
+    @apply flex-1 flex flex-col;
+  }
 }

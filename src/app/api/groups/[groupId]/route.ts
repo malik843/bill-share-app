@@ -45,3 +45,35 @@ export async function GET(
 
   return NextResponse.json(group)
 }
+
+// DELETE /api/groups/[groupId] — Admin-only group deletion
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ groupId: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { groupId } = await params
+
+  // Only ADMIN can delete
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId: session.user.id, groupId } },
+  })
+  if (!membership || membership.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden — admins only' }, { status: 403 })
+  }
+
+  // Cascade: delete splits → expenses → settlements → members → group
+  await prisma.$transaction([
+    prisma.expenseSplit.deleteMany({ where: { expense: { groupId } } }),
+    prisma.expense.deleteMany({ where: { groupId } }),
+    prisma.settlement.deleteMany({ where: { groupId } }),
+    prisma.groupMember.deleteMany({ where: { groupId } }),
+    prisma.group.delete({ where: { id: groupId } }),
+  ])
+
+  return NextResponse.json({ success: true })
+}

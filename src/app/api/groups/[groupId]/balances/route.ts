@@ -34,8 +34,23 @@ export async function GET(
     include: { splits: true },
   })
 
+  // Get user details for this group to enrich the settlements
+  const members = await prisma.groupMember.findMany({
+    where: { groupId },
+    include: { user: { select: { id: true, name: true, image: true, avatar: true, email: true } } }
+  })
+  const userMap = new Map(members.map(m => [m.userId, m.user]))
+
   const netBalances = computeNetBalances(expenses)
-  const settlements = simplifyDebts(netBalances)
+  const rawSettlements = simplifyDebts(netBalances)
+
+  const settlements = rawSettlements.map(s => ({
+    from: s.from,
+    to: s.to,
+    amount: s.amount,
+    fromUser: userMap.get(s.from) || { name: 'Unknown', id: s.from },
+    toUser: userMap.get(s.to) || { name: 'Unknown', id: s.to }
+  }))
 
   return NextResponse.json({ netBalances, settlements })
 }

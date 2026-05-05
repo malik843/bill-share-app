@@ -7,25 +7,38 @@ import { useDispatch } from 'react-redux';
 import { addBill } from '@/store/dashboardSlice';
 
 interface Props {
+  groupId?: string | null;
   onClose: () => void;
+  onExpenseCreated?: (expense: any) => void;
 }
 
-export default function CreateBillModal({ onClose }: Props) {
-  const [name, setName] = useState('');
+export default function CreateBillModal({ groupId, onClose, onExpenseCreated }: Props) {
+  const [members, setMembers] = useState<Array<{ user: { id: string, name: string | null } }>>([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
   const [purpose, setPurpose] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'owed' | 'owe'>('owed');
-  
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
   const overlayRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-  const dispatch = useDispatch();
 
   useEffect(() => {
+    if (groupId) {
+      fetch(`/api/groups/${groupId}/members`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setMembers(data);
+        })
+        .catch(console.error);
+    }
+
     if (overlayRef.current && modalRef.current) {
       gsap.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
       gsap.fromTo(modalRef.current, { y: 40, opacity: 0, scale: 0.95 }, { y: 0, opacity: 1, scale: 1, duration: 0.4, ease: 'power3.out' });
     }
-  }, []);
+  }, [groupId]);
 
   const handleClose = () => {
     if (overlayRef.current && modalRef.current) {
@@ -36,20 +49,42 @@ export default function CreateBillModal({ onClose }: Props) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     const numAmount = parseInt(amount, 10);
-    if (name && purpose && !isNaN(numAmount)) {
-      const finalAmount = type === 'owed' ? numAmount : -numAmount;
-      dispatch(addBill({
-        id: Math.random().toString(36).substring(7),
-        name,
-        purpose,
-        amount: finalAmount,
-        status: 'Pending'
-      }));
-      handleClose();
+    if (!selectedUserId || !purpose || isNaN(numAmount)) return;
+
+    setSubmitting(true);
+
+    if (groupId) {
+      try {
+        const res = await fetch(`/api/groups/${groupId}/expenses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: purpose,
+            amount: numAmount,
+            splits: [
+              { userId: selectedUserId, amount: numAmount },
+            ],
+          }),
+        });
+
+        if (res.ok) {
+          const expense = await res.json();
+          onExpenseCreated?.(expense);
+          handleClose();
+          return;
+        } else {
+          const data = await res.json();
+          setError(data.error || 'Failed to create expense');
+        }
+      } catch (e) {
+        setError('Network error occurred');
+      }
     }
+    setSubmitting(false);
   };
 
   return (
@@ -65,19 +100,20 @@ export default function CreateBillModal({ onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5">
-          {/* Type Toggle */}
+          {error && <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl text-sm font-medium">{error}</div>}
+          
           <div className="flex p-1 bg-muted/50 rounded-xl">
             <button
               type="button"
               onClick={() => setType('owed')}
-              className={`flex-1 py-2 font-semibold text-sm rounded-lg transition-all ${type === 'owed' ? 'bg-background shadow-sm text-emerald-600' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex-1 py-2 font-semibold text-sm rounded-lg transition-all cursor-pointer ${type === 'owed' ? 'bg-background shadow-sm text-emerald-600' : 'text-muted-foreground hover:text-foreground'}`}
             >
               They owe you
             </button>
             <button
               type="button"
               onClick={() => setType('owe')}
-              className={`flex-1 py-2 font-semibold text-sm rounded-lg transition-all ${type === 'owe' ? 'bg-background shadow-sm text-rose-600' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex-1 py-2 font-semibold text-sm rounded-lg transition-all cursor-pointer ${type === 'owe' ? 'bg-background shadow-sm text-rose-600' : 'text-muted-foreground hover:text-foreground'}`}
             >
               You owe them
             </button>
@@ -85,8 +121,13 @@ export default function CreateBillModal({ onClose }: Props) {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">User Name</label>
-              <input required value={name} onChange={e => setName(e.target.value)} type="text" className="w-full p-3 bg-muted/30 border border-border rounded-xl focus:ring-2 focus:ring-primary/50 focus:outline-none" placeholder="e.g. Segun O." />
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Group Member</label>
+              <select required value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="w-full p-3 bg-muted/30 border border-border rounded-xl focus:ring-2 focus:ring-primary/50 focus:outline-none">
+                <option value="" disabled>Select member...</option>
+                {members.map(m => (
+                  <option key={m.user.id} value={m.user.id}>{m.user.name || 'Unknown'}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Purpose</label>
@@ -98,8 +139,12 @@ export default function CreateBillModal({ onClose }: Props) {
             </div>
           </div>
 
-          <button type="submit" className="w-full mt-4 py-4 bg-foreground text-background font-bold rounded-xl transition-all cursor-pointer hover:opacity-90">
-            Create Bill
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full mt-4 py-4 bg-foreground text-background font-bold rounded-xl transition-all cursor-pointer hover:opacity-90 disabled:opacity-50"
+          >
+            {submitting ? 'Creating...' : 'Create Bill'}
           </button>
         </form>
       </div>
