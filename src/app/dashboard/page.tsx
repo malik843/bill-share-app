@@ -3,6 +3,25 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import gsap from 'gsap'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
 import { GripVertical, PlusCircle, Users, Receipt, ArrowRightLeft, LogOut } from 'lucide-react'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 
@@ -51,20 +70,40 @@ const SECTION_META: Record<SectionId, { label: string; icon: React.ReactNode }> 
 
 // ─── Section Grip Header ──────────────────────────────────────────────────────
 function SectionHeader({
-  id, label, icon, onGrip, action
-}: { id: SectionId; label: string; icon: React.ReactNode; onGrip: (id: SectionId) => void; action?: React.ReactNode }) {
+  id, label, icon, action, dragHandleProps
+}: { id: SectionId; label: string; icon: React.ReactNode; action?: React.ReactNode; dragHandleProps?: any }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <button
-        title="Move to top"
-        onClick={() => onGrip(id)}
+        title="Drag to reorder"
         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-grab active:cursor-grabbing"
+        {...dragHandleProps}
       >
         <GripVertical className="w-4 h-4" />
       </button>
       <span className="text-muted-foreground">{icon}</span>
       <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex-1">{label}</h2>
       {action}
+    </div>
+  )
+}
+
+// ─── Sortable Wrapper ─────────────────────────────────────────────────────────
+function SortableSection({ id, children }: { id: SectionId; children: (dragProps: any) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 100 : 1,
+    position: 'relative' as const,
+    boxShadow: isDragging ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : undefined,
+    scale: isDragging ? 1.02 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="dashboard-content-box">
+      {children({ ...attributes, ...listeners })}
     </div>
   )
 }
@@ -185,24 +224,24 @@ export default function DashboardPage() {
     }
   }, [addToast, openGroupId])
 
-  // ─── GSAP grip reorder ──────────────────────────────────────────────────────
-  const handleGrip = useCallback((id: SectionId) => {
-    setSectionOrder(prev => {
-      const idx = prev.indexOf(id)
-      if (idx === 0) return prev // already at top
-      const next = [id, ...prev.filter(s => s !== id)]
-
-      if (!reduced && containerRef.current) {
-        // Animate each section sliding into new position
-        const els = next.map(sid => sectionRefs.current[sid]).filter(Boolean) as HTMLDivElement[]
-        gsap.from(els, {
-          y: -20, opacity: 0.4, duration: 0.45, ease: 'power3.out',
-          stagger: 0.06,
-        })
-      }
-      return next
+  // ─── Dnd-kit logic ──────────────────────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
-  }, [reduced])
+  )
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setSectionOrder((items) => {
+        const oldIndex = items.indexOf(active.id as SectionId)
+        const newIndex = items.indexOf(over.id as SectionId)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
 
   // ─── Expense card format ────────────────────────────────────────────────────
   const expenseCards = apiExpenses.slice(0, 5).map(e => ({
@@ -217,136 +256,136 @@ export default function DashboardPage() {
     switch (id) {
       case 'balances':
         return (
-          <div
-            key="balances"
-            ref={el => { sectionRefs.current.balances = el }}
-            className="dashboard-content-box"
-          >
-            <SectionHeader id="balances" {...SECTION_META.balances} onGrip={handleGrip} />
-            <BalanceSummary owed={owedDisplay} owing={owingDisplay} />
-          </div>
+          <SortableSection key="balances" id="balances">
+            {(dragProps) => (
+              <>
+                <SectionHeader id="balances" {...SECTION_META.balances} dragHandleProps={dragProps} />
+                <BalanceSummary owed={owedDisplay} owing={owingDisplay} />
+              </>
+            )}
+          </SortableSection>
         )
 
       case 'groups':
         return (
-          <div
-            key="groups"
-            ref={el => { sectionRefs.current.groups = el }}
-            className="dashboard-content-box"
-          >
-            <SectionHeader
-              id="groups"
-              {...SECTION_META.groups}
-              onGrip={handleGrip}
-              action={
-                <button
-                  onClick={() => setShowCreateGroup(true)}
-                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity cursor-pointer"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" /> New
-                </button>
-              }
-            />
-            <GroupLimitBar count={groups.length} onUpgrade={() => addToast('Pro plan coming soon!', 'info')} />
-            <div className="space-y-2 mt-3">
-              {groups.length === 0 ? (
-                <EmptyState
-                  icon={Users}
-                  title="No groups yet"
-                  description="Create a group to start splitting expenses."
-                  action={{ label: 'Create Group', onClick: () => setShowCreateGroup(true) }}
+          <SortableSection key="groups" id="groups">
+            {(dragProps) => (
+              <>
+                <SectionHeader
+                  id="groups"
+                  {...SECTION_META.groups}
+                  dragHandleProps={dragProps}
+                  action={
+                    <button
+                      onClick={() => setShowCreateGroup(true)}
+                      className="flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" /> New
+                    </button>
+                  }
                 />
-              ) : (
-                groups.map(g => {
-                  const myBalance = apiBalances?.netBalances.find(b => b.userId === session?.user?.id)?.amount
-                  const membership = g.members.find(m => m.userId === session?.user?.id)
-                  return (
-                    <div key={g.id}>
-                      <GroupCard
-                        group={g}
-                        currentUserId={session?.user?.id}
-                        netBalance={myBalance}
-                        isAdmin={membership?.role === 'ADMIN'}
-                        onOpen={gId => setOpenGroupId(prev => prev === gId ? null : gId)}
-                        onDelete={handleDeleteGroup}
-                      />
-                      {openGroupId === g.id && (
-                        <div className="mt-2 ml-2">
-                          <GroupDetailPanel
-                            groupId={g.id}
+                <GroupLimitBar count={groups.length} onUpgrade={() => addToast('Pro plan coming soon!', 'info')} />
+                <div className="space-y-2 mt-3">
+                  {groups.length === 0 ? (
+                    <EmptyState
+                      icon={Users}
+                      title="No groups yet"
+                      description="Create a group to start splitting expenses."
+                      action={{ label: 'Create Group', onClick: () => setShowCreateGroup(true) }}
+                    />
+                  ) : (
+                    groups.map(g => {
+                      const myBalance = apiBalances?.netBalances.find(b => b.userId === session?.user?.id)?.amount
+                      const membership = g.members.find(m => m.userId === session?.user?.id)
+                      return (
+                        <div key={g.id}>
+                          <GroupCard
+                            group={g}
                             currentUserId={session?.user?.id}
-                            onClose={() => setOpenGroupId(null)}
-                            onSettle={(debtorId, creditorId, amount, name) =>
-                              handleSettle(debtorId, creditorId, amount, name)
-                            }
+                            netBalance={myBalance}
+                            isAdmin={membership?.role === 'ADMIN'}
+                            onOpen={gId => setOpenGroupId(prev => prev === gId ? null : gId)}
+                            onDelete={handleDeleteGroup}
                           />
+                          {openGroupId === g.id && (
+                            <div className="mt-2 ml-2">
+                              <GroupDetailPanel
+                                groupId={g.id}
+                                currentUserId={session?.user?.id}
+                                onClose={() => setOpenGroupId(null)}
+                                onSettle={(debtorId, creditorId, amount, name) =>
+                                  handleSettle(debtorId, creditorId, amount, name)
+                                }
+                              />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
+                      )
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </SortableSection>
         )
 
       case 'expenses':
         return (
-          <div
-            key="expenses"
-            ref={el => { sectionRefs.current.expenses = el }}
-            className="dashboard-content-box"
-          >
-            <SectionHeader
-              id="expenses"
-              {...SECTION_META.expenses}
-              onGrip={handleGrip}
-              action={
-                <button
-                  onClick={() => setShowCreateBill(true)}
-                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity cursor-pointer"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" /> Add
-                </button>
-              }
-            />
-            {expenseCards.length === 0 ? (
-              <EmptyState
-                icon={Receipt}
-                title="No expenses yet"
-                description="Add your first expense to start tracking."
-                action={{ label: 'Add Expense', onClick: () => setShowCreateBill(true) }}
-              />
-            ) : (
-              <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
-                {expenseCards.map(expense => (
-                  <ExpenseCard key={expense.id} expense={expense} isNew={expense.id === newExpenseId} />
-                ))}
-              </div>
+          <SortableSection key="expenses" id="expenses">
+            {(dragProps) => (
+              <>
+                <SectionHeader
+                  id="expenses"
+                  {...SECTION_META.expenses}
+                  dragHandleProps={dragProps}
+                  action={
+                    <button
+                      onClick={() => setShowCreateBill(true)}
+                      className="flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" /> Add
+                    </button>
+                  }
+                />
+                {expenseCards.length === 0 ? (
+                  <EmptyState
+                    icon={Receipt}
+                    title="No expenses yet"
+                    description="Add your first expense to start tracking."
+                    action={{ label: 'Add Expense', onClick: () => setShowCreateBill(true) }}
+                  />
+                ) : (
+                  <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                    {expenseCards.map(expense => (
+                      <ExpenseCard key={expense.id} expense={expense} isNew={expense.id === newExpenseId} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
-          </div>
+          </SortableSection>
         )
 
       case 'debts':
         return (
-          <div
-            key="debts"
-            ref={el => { sectionRefs.current.debts = el }}
-            className="dashboard-content-box"
-          >
-            <SectionHeader id="debts" {...SECTION_META.debts} onGrip={handleGrip} />
-            <DebtTable
-              currentUserId={session?.user?.id}
-              settlements={apiBalances?.settlements ?? []}
-              onSettle={(name, amount) => {
-                const s = apiBalances?.settlements.find(s =>
-                  (s.from === session?.user?.id || s.to === session?.user?.id) &&
-                  Math.abs(s.amount - amount) < 0.01
-                )
-                if (s) handleSettle(s.from, s.to, s.amount, name)
-              }}
-            />
-          </div>
+          <SortableSection key="debts" id="debts">
+            {(dragProps) => (
+              <>
+                <SectionHeader id="debts" {...SECTION_META.debts} dragHandleProps={dragProps} />
+                <DebtTable
+                  currentUserId={session?.user?.id}
+                  settlements={apiBalances?.settlements ?? []}
+                  onSettle={(name, amount) => {
+                    const s = apiBalances?.settlements.find(s =>
+                      (s.from === session?.user?.id || s.to === session?.user?.id) &&
+                      Math.abs(s.amount - amount) < 0.01
+                    )
+                    if (s) handleSettle(s.from, s.to, s.amount, name)
+                  }}
+                />
+              </>
+            )}
+          </SortableSection>
         )
     }
   }
@@ -390,10 +429,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Vertical sections — GSAP grip-reorderable */}
-          <div className="space-y-4">
-            {sectionOrder.map(id => renderSection(id))}
-          </div>
+          {/* Vertical sections — DndKit reorderable */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-4">
+              <SortableContext
+                items={sectionOrder}
+                strategy={verticalListSortingStrategy}
+              >
+                {sectionOrder.map(id => renderSection(id))}
+              </SortableContext>
+            </div>
+          </DndContext>
         </div>
       )}
 
