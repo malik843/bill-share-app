@@ -22,8 +22,9 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-import { GripVertical, PlusCircle, Users, Receipt, ArrowRightLeft, LogOut } from 'lucide-react'
+import { GripVertical, PlusCircle, Users, Receipt, ArrowRightLeft, LogOut, Camera, Sparkles } from 'lucide-react'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
+import { useProGate } from '@/hooks/useProGate'
 
 // Section components
 import SkeletonLoader from '@/components/dashboard/SkeletonLoader'
@@ -38,6 +39,8 @@ import GroupDetailPanel from '@/components/groups/GroupDetailPanel'
 import GroupLimitBar from '@/components/groups/GroupLimitBar'
 import CreateGroupModal from '@/components/groups/CreateGroupModal'
 import EmptyState from '@/components/ui/EmptyState'
+import UpgradeModal from '@/components/pro/UpgradeModal'
+import ReceiptScanner from '@/components/pro/ReceiptScanner'
 import { useCountUp } from '@/hooks/useCountUp'
 import { useToast } from '@/components/providers/ToastProvider'
 
@@ -113,12 +116,14 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const { addToast } = useToast()
   const reduced = useReducedMotion()
+  const { requirePro, showUpgrade, setShowUpgrade } = useProGate()
 
   const [loading, setLoading] = useState(true)
   const [dataVisible, setDataVisible] = useState(false)
   const [showCreateBill, setShowCreateBill] = useState(false)
   const [showWalletDeposit, setShowWalletDeposit] = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false)
   const [celebration, setCelebration] = useState<SettleCelebrationData | null>(null)
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
 
@@ -416,6 +421,13 @@ export default function DashboardPage() {
                 <PlusCircle className="w-6 h-6 md:w-8 md:h-8 text-foreground inline-block" strokeWidth={1.5} />
               </button>
               <button
+                onClick={() => requirePro(() => setShowReceiptScanner(true))}
+                className="dashboard-action-btn hover:cursor-pointer"
+                title="Scan receipt (Pro)"
+              >
+                <Camera className="w-6 h-6 md:w-8 md:h-8 text-foreground inline-block" strokeWidth={1.5} />
+              </button>
+              <button
                 onClick={() => { /* sign out handled elsewhere */ }}
                 className="dashboard-action-btn hover:cursor-pointer"
                 title="Account"
@@ -475,6 +487,21 @@ export default function DashboardPage() {
           amount={celebration.amount}
           debtorName={celebration.debtorName}
           onComplete={onSettlementComplete}
+        />
+      )}
+
+      {/* Pro — Upgrade Modal */}
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+
+      {/* Pro — Receipt Scanner */}
+      {showReceiptScanner && (
+        <ReceiptScanner
+          onClose={() => setShowReceiptScanner(false)}
+          onConfirm={(items, total) => {
+            setShowReceiptScanner(false)
+            addToast(`Scanned ${items.length} items from receipt`, 'success')
+            setShowCreateBill(true)
+          }}
         />
       )}
     </div>

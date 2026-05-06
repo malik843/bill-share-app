@@ -52,6 +52,7 @@ model User {
   image             String?
   avatar            String?
   password          String?         // For future Credentials provider
+  plan              Plan            @default(FREE)
   hasOnboarded      Boolean         @default(false)
   createdAt         DateTime        @default(now())
 
@@ -138,6 +139,11 @@ model Settlement {
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
+enum Plan {
+  FREE
+  PRO
+}
+
 enum Role {
   ADMIN
   MEMBER
