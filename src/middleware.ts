@@ -1,5 +1,8 @@
+import NextAuth from 'next-auth'
+import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+
+const { auth } = NextAuth(authConfig)
 
 export default auth(function middleware(req) {
   const isPro = (req.auth as any)?.plan === 'PRO'
