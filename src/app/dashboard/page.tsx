@@ -428,9 +428,9 @@ export default function DashboardPage() {
                 <Camera className="w-6 h-6 md:w-8 md:h-8 text-foreground inline-block" strokeWidth={1.5} />
               </button>
               <button
-                onClick={() => { /* sign out handled elsewhere */ }}
+                onClick={() => signOut({ callbackUrl: '/register' })}
                 className="dashboard-action-btn hover:cursor-pointer"
-                title="Account"
+                title="Log out"
               >
                 {session?.user?.image ? (
                   <img src={session.user.image} alt="avatar" className="w-8 h-8 rounded-full" />

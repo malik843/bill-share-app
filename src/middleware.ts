@@ -1,26 +1,31 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { auth } from '@/lib/auth'
 
-/**
- * Lightweight middleware that checks for the NextAuth session token cookie.
- * Does NOT import the heavy auth config (Prisma/pg) to stay Edge-compatible.
- * The actual auth verification happens server-side in the route handlers.
- */
-export function middleware(request: NextRequest) {
-  // NextAuth v5 JWT session cookie names
-  const sessionToken =
-    request.cookies.get('authjs.session-token')?.value ||
-    request.cookies.get('__Secure-authjs.session-token')?.value
+export default auth(function middleware(req) {
+  const isPro = (req.auth as any)?.plan === 'PRO'
+  const isProApiRoute = req.nextUrl.pathname.startsWith('/api/pro')
 
-  if (!sessionToken) {
-    const signInUrl = new URL('/register', request.url)
-    signInUrl.searchParams.set('callbackUrl', request.url)
-    return NextResponse.redirect(signInUrl)
+  if (isProApiRoute && !isPro) {
+    return NextResponse.json(
+      { error: 'Pro subscription required', upgrade: true },
+      { status: 403 }
+    )
   }
-
-  return NextResponse.next()
-}
+})
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/onboarding/:path*', '/api/pro/:path*'],
+  matcher: [
+    // App Router pages only
+    '/dashboard/:path*',
+    '/groups/:path*',
+    '/settle/:path*',
+    // App Router API routes only
+    '/api/groups/:path*',
+    '/api/pro/:path*',
+    '/api/pay/initialize',
+    // Excluded intentionally:
+    // /api/auth — NextAuth handler, no session needed
+    // /api/health — public
+    // /api/pay/webhook — signature-only guard, no session
+  ]
 }

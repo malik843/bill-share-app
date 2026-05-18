@@ -25,7 +25,7 @@ export async function GET(
     },
   })
   if (!membership) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   // Pull all expenses with their splits

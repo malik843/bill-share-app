@@ -28,7 +28,7 @@ export async function POST(
     where: { userId_groupId: { userId: session.user.id, groupId } },
   })
   if (!membership) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const body = await req.json()
@@ -80,7 +80,7 @@ export async function GET(
     where: { userId_groupId: { userId: session.user.id, groupId } },
   })
   if (!membership) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const settlements = await prisma.settlement.findMany({
