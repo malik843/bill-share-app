@@ -17,7 +17,7 @@ export default auth(function middleware(req) {
 })
 
 export const config = {
-  matcher: [
+  matcher: [ 
     // App Router pages only
     '/dashboard/:path*',
     '/groups/:path*',

@@ -125,6 +125,7 @@ export default function DashboardPage() {
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [showReceiptScanner, setShowReceiptScanner] = useState(false)
   const [celebration, setCelebration] = useState<SettleCelebrationData | null>(null)
+  const [deleteConfirmGroupId, setDeleteConfirmGroupId] = useState<string | null>(null)
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
 
   // API state
@@ -213,8 +214,14 @@ export default function DashboardPage() {
   }, [celebration, addToast, fetchAll])
 
   // ─── Delete group ───────────────────────────────────────────────────────────
-  const handleDeleteGroup = useCallback(async (gId: string) => {
-    if (!confirm('Delete this group? This cannot be undone.')) return
+  const handleDeleteGroup = useCallback((gId: string) => {
+    setDeleteConfirmGroupId(gId)
+  }, [])
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteConfirmGroupId) return
+    const gId = deleteConfirmGroupId
+    setDeleteConfirmGroupId(null)
     try {
       const res = await fetch(`/api/groups/${gId}`, { method: 'DELETE' })
       if (res.ok) {
@@ -227,7 +234,7 @@ export default function DashboardPage() {
     } catch {
       addToast('Network error', 'error')
     }
-  }, [addToast, openGroupId])
+  }, [deleteConfirmGroupId, addToast, openGroupId])
 
   // ─── Dnd-kit logic ──────────────────────────────────────────────────────────
   const sensors = useSensors(
@@ -310,17 +317,18 @@ export default function DashboardPage() {
                             netBalance={myBalance}
                             isAdmin={membership?.role === 'ADMIN'}
                             onOpen={gId => setOpenGroupId(prev => prev === gId ? null : gId)}
-                            onDelete={handleDeleteGroup}
                           />
                           {openGroupId === g.id && (
                             <div className="mt-2 ml-2">
                               <GroupDetailPanel
                                 groupId={g.id}
                                 currentUserId={session?.user?.id}
+                                isAdmin={membership?.role === 'ADMIN'}
                                 onClose={() => setOpenGroupId(null)}
                                 onSettle={(debtorId, creditorId, amount, name) =>
                                   handleSettle(debtorId, creditorId, amount, name)
                                 }
+                                onDelete={handleDeleteGroup}
                               />
                             </div>
                           )}
@@ -492,6 +500,33 @@ export default function DashboardPage() {
 
       {/* Pro — Upgrade Modal */}
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+
+      {/* Delete Group Confirmation Modal */}
+      {deleteConfirmGroupId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950/40">
+              <svg className="h-6 w-6 text-rose-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+            </div>
+            <h2 className="mb-1 text-lg font-bold text-foreground">Delete group?</h2>
+            <p className="mb-6 text-sm text-muted-foreground">All expenses, splits and settlements in this group will be permanently deleted. This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmGroupId(null)}
+                className="flex-1 rounded-xl border border-border bg-muted/40 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition-colors cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pro — Receipt Scanner */}
       {showReceiptScanner && (

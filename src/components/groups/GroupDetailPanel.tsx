@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { X, UserCircle2, Receipt, ArrowRightLeft, CheckCircle, Loader2 } from 'lucide-react'
+import { X, UserCircle2, Receipt, ArrowRightLeft, CheckCircle, Loader2, Trash2 } from 'lucide-react'
 import gsap from 'gsap'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useToast } from '@/components/providers/ToastProvider'
@@ -12,11 +12,13 @@ type Tab = 'expenses' | 'members' | 'settlements'
 interface GroupDetailPanelProps {
   groupId: string
   currentUserId?: string
+  isAdmin?: boolean
   onClose: () => void
   onSettle: (debtorId: string, creditorId: string, amount: number, name: string) => void
+  onDelete?: (groupId: string) => void
 }
 
-export default function GroupDetailPanel({ groupId, currentUserId, onClose, onSettle }: GroupDetailPanelProps) {
+export default function GroupDetailPanel({ groupId, currentUserId, isAdmin, onClose, onSettle, onDelete }: GroupDetailPanelProps) {
   const [tab, setTab] = useState<Tab>('expenses')
   const [group, setGroup] = useState<any>(null)
   const [expenses, setExpenses] = useState<any[]>([])
@@ -71,9 +73,20 @@ export default function GroupDetailPanel({ groupId, currentUserId, onClose, onSe
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <h3 className="font-bold text-base text-foreground">{group?.name ?? '…'}</h3>
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
-          <X className="w-4 h-4 text-muted-foreground" />
-        </button>
+        <div className="flex items-center gap-1">
+          {isAdmin && onDelete && (
+            <button 
+              onClick={() => onDelete(groupId)} 
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+              title="Delete Group"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer" title="Close Panel">
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Tab Bar */}
